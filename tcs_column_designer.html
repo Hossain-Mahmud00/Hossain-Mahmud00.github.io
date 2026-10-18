@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TCS–STC distillation column designer</title>
+<style>
+:root{--bg:#fcfcfb;--card:#f1efe8;--fg:#0b0b0b;--muted:#52514e;--faint:#898781;--grid:#e1e0d9;--blue:#2a78d6;--orange:#eb6834;--green:#1baf7a;--bd:rgba(11,11,11,.12);color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1a1a19;--card:#262624;--fg:#f0efec;--muted:#c3c2b7;--faint:#898781;--grid:#2c2c2a;--blue:#3987e5;--orange:#d95926;--green:#1baf7a;--bd:rgba(255,255,255,.14);color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1a1a19;--card:#262624;--fg:#f0efec;--muted:#c3c2b7;--faint:#898781;--grid:#2c2c2a;--blue:#3987e5;--orange:#d95926;--green:#1baf7a;--bd:rgba(255,255,255,.14);color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.6}
+main{max-width:560px;margin:0 auto;padding:20px 16px 32px}
+h1{font-size:22px;font-weight:500;margin:0 0 4px}
+.sub{font-size:14px;color:var(--muted);margin:0 0 18px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 16px}
+.card{background:var(--card);border-radius:8px;padding:12px 14px}
+.card .l{font-size:13px;color:var(--muted)}
+.card .v{font-size:26px;font-weight:500;font-variant-numeric:tabular-nums lining-nums}
+svg{width:100%;height:auto;display:block}
+.leg{display:flex;flex-wrap:wrap;gap:14px;margin:6px 0 16px;font-size:12px;color:var(--muted)}
+.leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px}
+.row{display:flex;align-items:center;gap:12px;margin:0 0 10px}
+.row label{font-size:14px;color:var(--muted);min-width:104px}
+.row input{flex:1;min-width:0}
+.row span{font-size:14px;font-weight:500;min-width:40px;text-align:right;font-variant-numeric:tabular-nums}
+.note{font-size:13px;color:var(--muted);border-top:1px solid var(--bd);margin-top:18px;padding-top:12px}
+.note p{margin:0 0 6px}
+</style>
+</head>
+<body>
+<main>
+<h1>TCS–STC column designer</h1>
+<p class="sub">McCabe–Thiele stage stepping for a trichlorosilane (TCS) and silicon tetrachloride (STC) split.</p>
+
+<div class="grid">
+<div class="card"><div class="l">Theoretical stages</div><div class="v" id="o-n">–</div></div>
+<div class="card"><div class="l">Feed stage</div><div class="v" id="o-f">–</div></div>
+<div class="card"><div class="l">Minimum reflux</div><div class="v" id="o-rmin">–</div></div>
+<div class="card"><div class="l">Actual reflux</div><div class="v" id="o-r">–</div></div>
+</div>
+
+<svg id="plot" viewBox="0 0 340 330" role="img" aria-label="McCabe–Thiele diagram with equilibrium curve, operating lines and stage steps"></svg>
+<div class="leg">
+<span><i style="background:var(--blue)"></i>Equilibrium</span>
+<span><i style="background:var(--orange)"></i>Rectifying line</span>
+<span><i style="background:var(--green)"></i>Stripping line</span>
+</div>
+
+<div class="row"><label for="k">Reflux × Rmin</label><input type="range" id="k" min="1.05" max="3" step="0.05" value="1.3"><span id="v-k"></span></div>
+<div class="row"><label for="xd">TCS in top</label><input type="range" id="xd" min="0.95" max="0.999" step="0.001" value="0.99"><span id="v-xd"></span></div>
+<div class="row"><label for="zf">TCS in feed</label><input type="range" id="zf" min="0.2" max="0.8" step="0.05" value="0.5"><span id="v-zf"></span></div>
+<div class="row"><label for="al">Volatility α</label><input type="range" id="al" min="1.5" max="4" step="0.01" value="2.37"><span id="v-al"></span></div>
+
+<div class="note">
+<p>Assumptions: ideal mixture (Raoult’s law), constant relative volatility, 1 atm, saturated liquid feed, 1% TCS in the bottoms.</p>
+<p>Default α = 2.37 is the average from a Python and Thermo calculation. Feed and product specifications are illustrative, not plant data. Stages are theoretical; real trays need more.</p>
+<p>Source: github.com/Hossain-Mahmud00/cantera-projects</p>
+</div>
+</main>
+<script>
+var A=2.37,XB=0.01,X0=40,Y0=300,S=280;
+function px(x){return X0+x*S}
+function py(y){return Y0-y*S}
+function eq(x){return A*x/(1+(A-1)*x)}
+function inv(y){return y/(A-(A-1)*y)}
+function el(t,a,txt){var e=document.createElementNS('http://www.w3.org/2000/svg',t);for(var k in a)e.setAttribute(k,a[k]);if(txt!==undefined)e.textContent=txt;return e}
+function g(id){return parseFloat(document.getElementById(id).value)}
+function draw(){
+A=g('al');var k=g('k'),xD=g('xd'),zF=g('zf');
+document.getElementById('v-k').textContent=k.toFixed(2);
+document.getElementById('v-xd').textContent=xD.toFixed(3);
+document.getElementById('v-zf').textContent=zF.toFixed(2);
+document.getElementById('v-al').textContent=A.toFixed(2);
+var ys=eq(zF),Rmin=(xD-ys)/(ys-zF),R=k*Rmin,yi=R/(R+1)*zF+xD/(R+1);
+function op(x){return x>=zF?R/(R+1)*x+xD/(R+1):XB+(yi-XB)/(zF-XB)*(x-XB)}
+var pts=[[xD,xD]],y=xD,n=0,feed=null,cap=false;
+while(true){var x=inv(y);n++;pts.push([x,y]);if(feed===null&&x<zF)feed=n;if(x<=XB)break;if(n>=200){cap=true;break}y=op(x);pts.push([x,y])}
+document.getElementById('o-n').textContent=cap?'200+':n;
+document.getElementById('o-f').textContent=feed===null?'–':feed;
+document.getElementById('o-rmin').textContent=Rmin.toFixed(2);
+document.getElementById('o-r').textContent=R.toFixed(2);
+var s=document.getElementById('plot');while(s.firstChild)s.removeChild(s.firstChild);
+[0,0.5,1].forEach(function(t){
+s.appendChild(el('line',{x1:px(0),y1:py(t),x2:px(1),y2:py(t),style:'stroke:var(--grid)'}));
+s.appendChild(el('line',{x1:px(t),y1:py(0),x2:px(t),y2:py(1),style:'stroke:var(--grid)'}));
+s.appendChild(el('text',{x:px(t),y:Y0+16,'text-anchor':'middle',style:'font-size:11px;fill:var(--faint)'},t));
+s.appendChild(el('text',{x:X0-8,y:py(t)+4,'text-anchor':'end',style:'font-size:11px;fill:var(--faint)'},t))});
+s.appendChild(el('text',{x:px(.5),y:Y0+31,'text-anchor':'middle',style:'font-size:12px;fill:var(--muted)'},'x TCS in liquid'));
+s.appendChild(el('text',{x:10,y:py(.5),'text-anchor':'middle',transform:'rotate(-90 10 '+py(.5)+')',style:'font-size:12px;fill:var(--muted)'},'y TCS in vapor'));
+s.appendChild(el('line',{x1:px(0),y1:py(0),x2:px(1),y2:py(1),style:'stroke:var(--faint);stroke-dasharray:4 4'}));
+var d='';for(var i=0;i<=60;i++){var xx=i/60;d+=(i?'L':'M')+px(xx).toFixed(1)+' '+py(eq(xx)).toFixed(1)}
+s.appendChild(el('path',{d:d,fill:'none',style:'stroke:var(--blue);stroke-width:2.5;stroke-linecap:round'}));
+s.appendChild(el('line',{x1:px(xD),y1:py(xD),x2:px(zF),y2:py(yi),style:'stroke:var(--orange);stroke-width:2'}));
+s.appendChild(el('line',{x1:px(zF),y1:py(yi),x2:px(XB),y2:py(XB),style:'stroke:var(--green);stroke-width:2'}));
+s.appendChild(el('line',{x1:px(zF),y1:py(0),x2:px(zF),y2:py(yi),style:'stroke:var(--faint);stroke-dasharray:2 3'}));
+var sd='';pts.forEach(function(p,i){sd+=(i?'L':'M')+px(p[0]).toFixed(1)+' '+py(p[1]).toFixed(1)});
+s.appendChild(el('path',{d:sd,fill:'none',style:'stroke:var(--fg);stroke-width:1'}));
+s.appendChild(el('circle',{cx:px(xD),cy:py(xD),r:3.5,style:'fill:var(--orange)'}));
+s.appendChild(el('circle',{cx:px(XB),cy:py(XB),r:3.5,style:'fill:var(--green)'}));
+s.appendChild(el('circle',{cx:px(zF),cy:py(yi),r:3.5,style:'fill:var(--fg)'}));
+s.appendChild(el('text',{x:px(xD)-6,y:py(xD)-8,'text-anchor':'end',style:'font-size:11px;fill:var(--muted)'},'top'));
+s.appendChild(el('text',{x:px(zF)+7,y:py(yi)+14,style:'font-size:11px;fill:var(--muted)'},'feed'));
+s.appendChild(el('text',{x:px(XB)+7,y:py(XB)-8,style:'font-size:11px;fill:var(--muted)'},'bottom'))}
+['k','xd','zf','al'].forEach(function(i){document.getElementById(i).addEventListener('input',draw)});
+draw();
+</script>
+</body>
+</html>
