@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TCS condenser sizing</title>
+<style>
+:root{--bg:#fcfcfb;--card:#f1efe8;--fg:#0b0b0b;--muted:#52514e;--faint:#898781;--accent:#1f5fbf;--bd:rgba(11,11,11,.12);--c1:#2a78d6;--c2:#eb6834;--c3:#1baf7a;--c4:#a07cd9;--c5:#898781;--warn:#b3541e;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1a1a19;--card:#262624;--fg:#f0efec;--muted:#c3c2b7;--faint:#898781;--accent:#6aa5f0;--bd:rgba(255,255,255,.14);--c1:#3987e5;--c2:#d95926;--c3:#1baf7a;--c4:#a07cd9;--c5:#898781;--warn:#f0a070;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1a1a19;--card:#262624;--fg:#f0efec;--muted:#c3c2b7;--faint:#898781;--accent:#6aa5f0;--bd:rgba(255,255,255,.14);--c1:#3987e5;--c2:#d95926;--c3:#1baf7a;--c4:#a07cd9;--c5:#898781;--warn:#f0a070;color-scheme:dark}
+*,*::before,*::after{box-sizing:border-box}
+html{overflow-x:hidden;-webkit-text-size-adjust:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.6;overflow-wrap:anywhere}
+main{max-width:560px;margin:0 auto;padding:20px 16px 32px}
+a{color:var(--accent)}
+h1{font-size:22px;font-weight:500;margin:0 0 4px}
+h2{font-size:15px;font-weight:600;margin:20px 0 8px;color:var(--accent)}
+.sub{font-size:14px;color:var(--muted);margin:0 0 16px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 6px}
+.card{background:var(--card);border-radius:8px;padding:10px 14px}
+.card .l{font-size:13px;color:var(--muted)}
+.card .v{font-size:24px;font-weight:500;font-variant-numeric:tabular-nums lining-nums}
+.card .u{font-size:13px;color:var(--muted);font-weight:400}
+.bar{display:flex;height:26px;border-radius:6px;overflow:hidden;margin:4px 0 8px}
+.bar div{min-width:2px}
+.leg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted);margin:0 0 6px}
+.leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px}
+.row{display:flex;align-items:center;gap:12px;margin:0 0 10px}
+.row label{font-size:14px;color:var(--muted);min-width:118px}
+.row input[type=range]{flex:1;min-width:0}
+.row select{flex:1;min-width:0;font-size:15px;padding:6px;border-radius:6px;border:1px solid var(--bd);background:var(--card);color:var(--fg)}
+.row span{font-size:14px;font-weight:500;min-width:48px;text-align:right;font-variant-numeric:tabular-nums}
+#warn{font-size:13px;color:var(--warn);margin:0 0 10px;min-height:0}
+.note{font-size:13px;color:var(--muted);border-top:1px solid var(--bd);margin-top:18px;padding-top:12px}
+.note p{margin:0 0 6px}
+</style>
+</head>
+<body>
+<main>
+<h1>TCS condenser sizing</h1>
+<p class="sub">Shell-and-tube condenser for trichlorosilane (TCS) vapor, cooled by chilled water. Move the sliders and watch the area, tube count, and pressure drop change.</p>
+
+<div class="grid">
+<div class="card"><div class="l">Heat duty</div><div class="v"><span id="o-q">–</span> <span class="u">kW</span></div></div>
+<div class="card"><div class="l">Area</div><div class="v"><span id="o-a">–</span> <span class="u">m²</span></div></div>
+<div class="card"><div class="l">Overall U</div><div class="v"><span id="o-u">–</span> <span class="u">W/m²K</span></div></div>
+<div class="card"><div class="l">LMTD</div><div class="v"><span id="o-lmtd">–</span> <span class="u">K</span></div></div>
+<div class="card"><div class="l">Tubes (total)</div><div class="v"><span id="o-n">–</span></div></div>
+<div class="card"><div class="l">Tube length</div><div class="v"><span id="o-len">–</span> <span class="u">m</span></div></div>
+<div class="card"><div class="l">Water flow</div><div class="v"><span id="o-mw">–</span> <span class="u">kg/s</span></div></div>
+<div class="card"><div class="l">Water pressure drop</div><div class="v"><span id="o-dp">–</span> <span class="u">bar</span></div></div>
+</div>
+<div id="warn"></div>
+
+<h2>Where the resistance sits</h2>
+<div class="bar" id="bar" role="img" aria-label="Share of each thermal resistance in the overall heat transfer coefficient"></div>
+<div class="leg" id="leg"></div>
+
+<h2>Inputs</h2>
+<div class="row"><label for="m">TCS condensed</label><input type="range" id="m" min="0.2" max="3" step="0.1" value="1"><span id="v-m"></span></div>
+<div class="row"><label for="tc">Condensing temp</label><input type="range" id="tc" min="300" max="325" step="1" value="305"><span id="v-tc"></span></div>
+<div class="row"><label for="ti">Water in</label><input type="range" id="ti" min="2" max="20" step="1" value="5"><span id="v-ti"></span></div>
+<div class="row"><label for="dw">Water temp rise</label><input type="range" id="dw" min="4" max="20" step="1" value="10"><span id="v-dw"></span></div>
+<div class="row"><label for="v">Water speed</label><input type="range" id="v" min="0.8" max="3" step="0.1" value="1.5"><span id="v-v"></span></div>
+<div class="row"><label for="p">Tube passes</label><select id="p"><option>1</option><option selected>2</option><option>4</option><option>6</option></select></div>
+
+<div class="note">
+<p>Method: log-mean temperature difference, tube side by Dittus–Boelter, condensing side by the Nusselt film correlation for a horizontal tube, with wall and fouling resistances. Tubes are ¾ inch (19.05 mm OD, 15.75 mm ID) stainless steel.</p>
+<p>This is a first-pass estimate. A real tube bundle usually condenses less efficiently than one tube, and the shell diameter and condensing-side pressure drop are not designed here.</p>
+<p>TCS latent heat and liquid properties are held at their values near 305 K, so results drift away from that temperature. All inputs are examples, not plant data.</p>
+<p><a href="index.html">Back to portfolio</a> · Source: github.com/Hossain-Mahmud00/cantera-projects</p>
+</div>
+</main>
+<script>
+var HV=183145.6,TLK=0.08517771,TLR=1331.0433,TLM=3.0471214e-4,G=9.81;
+var DO=0.01905,DI=0.01575,KW=16,RFI=2e-4,RFO=1e-4,CP=4195.4,RHO=999.7,MU283=1.3113e-3;
+function vog(T){return 2.414e-5*Math.pow(10,247.8/(T-140))}
+var V283=vog(283);
+function $(id){return document.getElementById(id)}
+function num(id){return parseFloat($(id).value)}
+function set(id,t){$(id).textContent=t}
+function calc(){
+var m=num('m'),Tc=num('tc'),ti=num('ti'),dw=num('dw'),v=num('v'),ps=parseInt($('p').value,10);
+set('v-m',m.toFixed(1)+' kg/s');set('v-tc',Tc+' K');set('v-ti',ti+' °C');set('v-dw',dw+' K');set('v-v',v.toFixed(1)+' m/s');
+var Q=m*HV,Tin=273.15+ti,Tout=Tin+dw,d1=Tc-Tin,d2=Tc-Tout,warn=[];
+if(d2<2){$('warn').textContent='Water leaves too close to, or above, the condensing temperature. Lower the water inlet or the temperature rise.';
+['o-q','o-a','o-u','o-lmtd','o-n','o-len','o-mw','o-dp'].forEach(function(i){set(i,'–')});$('bar').innerHTML='';$('leg').innerHTML='';return}
+var lmtd=Math.abs(d1-d2)<1e-6?d1:(d1-d2)/Math.log(d1/d2);
+var Tm=(Tin+Tout)/2,mu=MU283*vog(Tm)/V283,kl=0.567+0.0016*(Tm-283);
+var Re=RHO*v*DI/mu,Pr=CP*mu/kl,hi=0.023*Math.pow(Re,0.8)*Math.pow(Pr,0.4)*kl/DI;
+var dTf=8,ho=0,U=0,i;
+for(i=0;i<80;i++){
+ho=0.725*Math.pow(Math.pow(TLK,3)*TLR*TLR*G*HV/(TLM*DO*dTf),0.25);
+U=1/(1/ho+RFO+DO*Math.log(DO/DI)/(2*KW)+RFI*DO/DI+DO/(DI*hi));
+dTf=0.5*dTf+0.5*Math.max(U*lmtd/ho,0.05)}
+var A=Q/(U*lmtd),mw=Q/(CP*dw),mt=RHO*v*Math.PI*DI*DI/4,N=Math.ceil(mw/mt);
+var L=A/(N*ps*Math.PI*DO),f=0.316*Math.pow(Re,-0.25),dP=f*(ps*L/DI)*0.5*RHO*v*v/1e5;
+set('o-q',(Q/1000).toFixed(0));set('o-a',A.toFixed(1));set('o-u',U.toFixed(0));set('o-lmtd',lmtd.toFixed(1));
+set('o-n',N*ps);set('o-len',L.toFixed(1));set('o-mw',mw.toFixed(2));set('o-dp',dP.toFixed(2));
+if(Re<10000)warn.push('Tube-side flow is below Re = 10,000, outside the range where the Dittus–Boelter correlation is reliable.');
+if(L>7)warn.push('Tubes are longer than 7 m. Add passes or tubes.');
+if(dP>0.5)warn.push('Water-side pressure drop is above 0.5 bar. Lower the speed or the passes.');
+$('warn').textContent=warn.join(' ');
+var r=[['TCS film',1/ho,'var(--c1)'],['Outside fouling',RFO,'var(--c2)'],['Tube wall',DO*Math.log(DO/DI)/(2*KW),'var(--c3)'],['Inside fouling',RFI*DO/DI,'var(--c4)'],['Water film',DO/(DI*hi),'var(--c5)']];
+var tot=0;r.forEach(function(x){tot+=x[1]});
+var bar='',leg='';
+r.forEach(function(x){var pc=100*x[1]/tot;bar+='<div style="width:'+pc.toFixed(2)+'%;background:'+x[2]+'"></div>';leg+='<span><i style="background:'+x[2]+'"></i>'+x[0]+' '+pc.toFixed(0)+'%</span>'});
+$('bar').innerHTML=bar;$('leg').innerHTML=leg}
+['m','tc','ti','dw','v','p'].forEach(function(i){$(i).addEventListener('input',calc)});
+calc();
+</script>
+</body>
+</html>
